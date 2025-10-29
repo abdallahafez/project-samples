@@ -1,0 +1,59 @@
+version: '3.8'
+
+volumes:
+  jenkins_data: {}
+  sonarqube_data: {}
+  sonarqube_extensions: {}
+  nexus_data: {}
+
+services:
+  jenkins:
+    image: jenkins/jenkins:lts-jdk17
+    container_name: jenkins
+    restart: always
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+    networks:
+      - devops-net
+
+  sonarqube:
+    image: sonarqube:lts-community
+    container_name: sonarqube
+    restart: always
+    ports:
+      - "9000:9000"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+    environment:
+      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+      - SONAR_FORCEAUTHENTICATION=false
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    networks:
+      - devops-net
+
+  nexus:
+    image: sonatype/nexus3:latest
+    container_name: nexus
+    restart: always
+    ports:
+      - "8081:8081"
+    volumes:
+      - nexus_data:/nexus-data
+    environment:
+      - INSTALL4J_ADD_VM_PARAMS=-Djava.security.egd=file:/dev/./urandom
+    networks:
+      - devops-net
+
+networks:
+  devops-net:
+    driver: bridge
