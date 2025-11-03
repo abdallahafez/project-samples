@@ -1,0 +1,23 @@
+---
+- name: Create a Linux user with sudo privileges
+  hosts: all
+  become: yes
+  vars:
+    user_name: devops
+  tasks:
+    - name: Create user account
+      ansible.builtin.user:
+        name: "{{ user_name }}"
+        state: present
+        shell: /bin/bash
+
+    - name: Add user to sudo group
+      ansible.builtin.user:
+        name: "{{ user_name }}"
+        groups: sudo
+        append: yes
+
+    - name: Copy authorized key for SSH login
+      ansible.builtin.authorized_key:
+        user: "{{ user_name }}"
+        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"

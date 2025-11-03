@@ -1,0 +1,20 @@
+---
+- name: Install and start Nginx web server
+  hosts: web
+  become: yes
+  tasks:
+    - name: Ensure apt cache is updated (Debian/Ubuntu)
+      ansible.builtin.apt:
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Install Nginx
+      ansible.builtin.package:
+        name: nginx
+        state: present
+
+    - name: Enable and start Nginx service
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: yes
