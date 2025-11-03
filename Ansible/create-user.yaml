@@ -4,20 +4,42 @@
   become: yes
   vars:
     user_name: devops
+    user_shell: /bin/bash
+    user_comment: "DevOps User"
+    ssh_pubkey_path: "~/.ssh/id_rsa.pub"
+
   tasks:
-    - name: Create user account
+    - name: Create the user account
       ansible.builtin.user:
         name: "{{ user_name }}"
+        shell: "{{ user_shell }}"
+        comment: "{{ user_comment }}"
         state: present
-        shell: /bin/bash
-
-    - name: Add user to sudo group
-      ansible.builtin.user:
-        name: "{{ user_name }}"
+        create_home: yes
         groups: sudo
-        append: yes
+      register: create_user_result
 
-    - name: Copy authorized key for SSH login
+    - name: Ensure the ssh directory exists for the new user
+      ansible.builtin.file:
+        path: "/home/{{ user_name }}/.ssh"
+        state: directory
+        owner: "{{ user_name }}"
+        group: "{{ user_name }}"
+        mode: "0700"
+      when: create_user_result is succeeded
+
+    - name: Set authorized key for the user (copy public key)
       ansible.builtin.authorized_key:
         user: "{{ user_name }}"
-        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+        state: present
+        key: "{{ lookup('file', ssh_pubkey_path) }}"
+      when: create_user_result is succeeded
+
+    - name: Ensure sudoers entry exists (passwordless sudo for the user)
+      ansible.builtin.copy:
+        dest: "/etc/sudoers.d/{{ user_name }}"
+        content: "{{ user_name }} ALL=(ALL) NOPASSWD:ALL\n"
+        owner: root
+        group: root
+        mode: "0440"
+      validate: '/usr/sbin/visudo -cf %s'
